@@ -10,6 +10,8 @@ LED Cloud is an ESP8266-based IoT project that provides a web dashboard for cont
 - Adjust LED brightness with a slider (0-255)
 - Visual indicator of LED status
 - Real-time feedback
+- Control individual LEDs, groups, or all at once
+- Multiple animation patterns (Off, Red, Rainbow, Chase, Fade, Twinkle, Fire, Rain, Color Wipe)
 
 ### Weather Display
 - Shows current temperature in Celsius
@@ -36,7 +38,7 @@ LED Cloud is an ESP8266-based IoT project that provides a web dashboard for cont
 
 ### Hardware Requirements
 - ESP8266-based development board
-- LED connected to a PWM-capable pin
+- NeoPixel (WS2812) LED strip (60 LEDs)
 - Power supply
 
 ### Software Components
@@ -44,6 +46,7 @@ LED Cloud is an ESP8266-based IoT project that provides a web dashboard for cont
 - **Weather**: Manages OpenWeatherMap API communication
 - **WebServer**: Provides the web interface and API endpoints
 - **Protocol**: Handles LED control functionality
+- **NeoPixel**: Manages LED patterns and updates
 
 ### Technologies Used
 - ESP8266 Arduino Core
@@ -57,17 +60,10 @@ LED Cloud is an ESP8266-based IoT project that provides a web dashboard for cont
 1. Clone the repository
 2. Configure your `Config.h` with your WiFi credentials and OpenWeatherMap API key
 3. Upload the firmware using PlatformIO
-4. Upload the web interface files to the ESP8266's filesystem
+4. Upload the web interface files to the ESP8266's filesystem (`data/index.html`)
 5. Access the dashboard by connecting to the ESP8266's IP address
 
-## Future Enhancements
-- Add support for multiple LEDs or RGB strips
-- Implement scheduled lighting patterns
-- Add additional sensors (temperature, motion, etc.)
-- Create user profiles with preferences
-
 ## API Endpoints
-
 - `/led/on` - Turn LED on
 - `/led/off` - Turn LED off
 - `/brightness?value=X` - Set LED brightness (0-255)
@@ -75,8 +71,19 @@ LED Cloud is an ESP8266-based IoT project that provides a web dashboard for cont
 - `/weather/update` - Force weather update
 - `/weather/settings` - Get or update weather settings
 - `/system/info` - Get system information
+- `/neopixel/setAll` - Set all NeoPixels to a color
+- `/neopixel/setPattern` - Set NeoPixel animation pattern
+- `/neopixel/setBrightness` - Set NeoPixel brightness
+- `/neopixel/status` - Get NeoPixel status
 
 ## Notes
 - Weather API is rate-limited to avoid exceeding the free tier limits
 - Settings are stored in LittleFS and persist through reboots
 - The interface uses client-side storage for theme preferences
+- The web UI is now fully responsive and mobile-friendly (meta viewport tag fixed)
+
+## Future Enhancements
+- Add support for multiple LEDs or RGB strips
+- Implement scheduled lighting patterns
+- Add additional sensors (temperature, motion, etc.)
+- Create user profiles with preferences
