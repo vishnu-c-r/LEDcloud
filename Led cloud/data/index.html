@@ -3,118 +3,590 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LEDcloud Control Panel</title>
+  <title>LEDcloud Dashboard</title>
   <style>
+    :root {
+      --primary-color: #3498db;
+      --success-color: #2ecc71;
+      --danger-color: #e74c3c;
+      --dark-color: #2c3e50;
+      --light-color: #f0f4f8;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      --transition: all 0.3s ease;
+    }
+
+    body.dark-mode {
+      --primary-color: #4dabf7;
+      --success-color: #51cf66;
+      --danger-color: #fa5252;
+      --dark-color: #121212;
+      --light-color: #212121;
+      --card-bg: #333333;
+      --text-color: #e0e0e0;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: var(--transition);
+    }
+
     body { 
-      font-family: Arial, sans-serif; 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0; 
-      padding: 20px; 
-      text-align: center;
-      background-color: #f0f4f8;
-      color: #333;
+      padding: 0; 
+      background-color: var(--light-color);
+      color: var(--text-color);
+      min-height: 100vh;
     }
-    .container { 
-      max-width: 400px; 
-      margin: 0 auto; 
+
+    header {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow);
     }
-    h1 { 
-      color: #2c3e50; 
-      margin-bottom: 20px;
+
+    .title-container h1 {
+      margin: 0;
+      font-size: 1.5rem;
     }
+
+    .theme-toggle {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      outline: none;
+    }
+
+    .theme-toggle:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .dashboard-container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
     .card { 
-      background-color: #ffffff; 
+      background-color: var(--card-bg); 
       border-radius: 10px; 
       padding: 20px; 
-      margin: 20px 0; 
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+      box-shadow: var(--shadow);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
-    button { 
-      background-color: #3498db; 
-      border: none; 
-      color: white; 
-      padding: 10px 20px; 
-      text-align: center; 
-      border-radius: 5px; 
-      cursor: pointer; 
-      margin: 5px; 
-      font-size: 16px;
-      transition: background-color 0.3s;
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
     }
-    button:hover {
-      opacity: 0.9;
+
+    .card h2 { 
+      color: var(--primary-color); 
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     }
-    button.on { 
-      background-color: #2ecc71; 
+
+    body.dark-mode .card h2 {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
-    button.off { 
-      background-color: #e74c3c; 
+
+    .led-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    .slider-container { 
-      margin: 20px 0; 
+
+    .led-status-indicator {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      margin: 20px 0;
+      background-color: #e0e0e0;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
     }
-    .slider { 
+
+    .led-status-indicator.on {
+      background-color: var(--success-color);
+      box-shadow: 
+        0 0 20px var(--success-color),
+        inset 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+
+    .led-status-indicator::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -50%;
+      width: 200%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transform: skewX(-20deg);
+      animation: shine 2s infinite;
+      opacity: 0;
+    }
+
+    .led-status-indicator.on::after {
+      opacity: 1;
+    }
+
+    @keyframes shine {
+      0% { left: -50%; }
+      100% { left: 100%; }
+    }
+
+    .toggle-button-container {
+      margin: 15px 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--success-color);
+    }
+
+    input:focus + .slider {
+      box-shadow: 0 0 1px var(--success-color);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    .toggle-label {
+      margin-left: 10px;
+      font-weight: bold;
+    }
+
+    .brightness-container { 
+      margin: 20px 0;
+      width: 100%;
+    }
+
+    .brightness-container h3 {
+      margin-bottom: 10px;
+      color: var(--text-color);
+      font-weight: normal;
+    }
+
+    .brightness-slider { 
       width: 100%; 
-      height: 25px; 
+      height: 8px;
       -webkit-appearance: none;
       appearance: none;
       background: #d3d3d3;
       outline: none;
-      border-radius: 12px;
+      border-radius: 4px;
+      overflow: hidden;
     }
-    .slider::-webkit-slider-thumb {
+
+    .brightness-slider::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 25px;
-      height: 25px;
-      background: #3498db;
+      width: 18px;
+      height: 18px;
+      background: var(--primary-color);
       cursor: pointer;
       border-radius: 50%;
+      box-shadow: -100vw 0 0 100vw var(--primary-color);
     }
-    .slider::-moz-range-thumb {
-      width: 25px;
-      height: 25px;
-      background: #3498db;
+
+    .brightness-slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      background: var(--primary-color);
       cursor: pointer;
       border-radius: 50%;
+      box-shadow: -100vw 0 0 100vw var(--primary-color);
     }
+
+    .brightness-value {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-top: 15px;
+      color: var(--primary-color);
+    }
+
+    .weather-card {
+      text-align: center;
+    }
+
+    .weather-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    .weather-temp {
+      font-size: 3rem;
+      font-weight: bold;
+      margin: 5px 0;
+      background: linear-gradient(45deg, var(--primary-color), #9b59b6);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .weather-desc {
+      font-size: 1.2rem;
+      margin: 5px 0 15px 0;
+      color: var(--text-color);
+    }
+
+    .weather-icon {
+      width: 120px;
+      height: 120px;
+      margin: 10px 0;
+      filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.2));
+    }
+
+    body.dark-mode .weather-icon {
+      filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2));
+    }
+
+    .weather-update-time {
+      font-size: 0.8rem;
+      color: #7f8c8d;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .weather-api-calls {
+      font-size: 0.8rem;
+      color: #7f8c8d;
+      margin-top: 5px;
+    }
+
+    .button {
+      background-color: var(--primary-color);
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 10px 0;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      display: inline-block;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .button:active {
+      transform: translateY(0);
+    }
+
+    .button.refresh {
+      background-color: var(--primary-color);
+    }
+
+    .system-info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .system-info-item {
+      background-color: rgba(0, 0, 0, 0.05);
+      padding: 15px;
+      border-radius: 5px;
+      text-align: center;
+    }
+
+    body.dark-mode .system-info-item {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .system-info-item p {
+      font-size: 0.9rem;
+      margin-bottom: 5px;
+    }
+
+    .system-info-item .value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+
     .status {
       font-weight: bold;
     }
+
     .status.on {
-      color: #2ecc71;
+      color: var(--success-color);
     }
+
     .status.off {
-      color: #e74c3c;
+      color: var(--danger-color);
     }
-    .refresh-button {
-      background-color: #9b59b6;
+
+    /* Weather Settings Styles */
+    .settings-form {
+      text-align: left;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      background-color: var(--card-bg);
+      color: var(--text-color);
+    }
+
+    body.dark-mode .form-group input {
+      border: 1px solid #555;
+    }
+
+    .form-group input:focus {
+      border-color: var(--primary-color);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
+    }
+
+    .button.save {
+      background-color: var(--success-color);
+      width: 100%;
+    }
+
+    .status-message {
       margin-top: 10px;
+      padding: 10px;
+      border-radius: 4px;
+      display: none;
     }
+
+    .status-message.success {
+      background-color: #d5f5e3;
+      color: #27ae60;
+      display: block;
+    }
+
+    .status-message.error {
+      background-color: #fadbd8;
+      color: #e74c3c;
+      display: block;
+    }
+
+    body.dark-mode .status-message.success {
+      background-color: rgba(39, 174, 96, 0.2);
+      color: #51cf66;
+    }
+
+    body.dark-mode .status-message.error {
+      background-color: rgba(231, 76, 60, 0.2);
+      color: #fa5252;
+    }
+
+    .settings-toggle {
+      color: var(--primary-color);
+      cursor: pointer;
+      text-decoration: underline;
+      margin-top: 10px;
+      display: inline-block;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .dashboard-container {
+        grid-template-columns: 1fr;
+      }
+      
+      .system-info-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .system-info-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      animation: fadeIn 0.5s ease forwards;
+    }
+
+    .card:nth-child(1) { animation-delay: 0.1s; }
+    .card:nth-child(2) { animation-delay: 0.2s; }
+    .card:nth-child(3) { animation-delay: 0.3s; }
+    .card:nth-child(4) { animation-delay: 0.4s; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>LEDcloud Control Panel</h1>
-    
+  <header>
+    <div class="title-container">
+      <h1>LEDcloud Dashboard</h1>
+    </div>
+    <button id="theme-toggle" class="theme-toggle" title="Toggle theme">🌙</button>
+  </header>
+
+  <div class="dashboard-container">
+    <!-- LED Control Card -->
     <div class="card">
       <h2>LED Control</h2>
-      <div>
-        <button class="on" onclick="setLED(true)">Turn ON</button>
-        <button class="off" onclick="setLED(false)">Turn OFF</button>
-      </div>
-      <div class="slider-container">
-        <h3>Brightness</h3>
-        <input type="range" min="0" max="255" value="100" class="slider" id="brightnessSlider">
-        <p>Value: <span id="brightnessValue">100</span></p>
+      <div class="led-controls">
+        <div id="led-indicator" class="led-status-indicator"></div>
+        
+        <div class="toggle-button-container">
+          <label class="toggle-switch">
+            <input type="checkbox" id="ledToggle">
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label" id="led-state">OFF</span>
+        </div>
+        
+        <div class="brightness-container">
+          <h3>Brightness</h3>
+          <input type="range" min="0" max="255" value="100" class="brightness-slider" id="brightnessSlider">
+          <div class="brightness-value"><span id="brightnessValue">100</span></div>
+        </div>
       </div>
     </div>
     
+    <!-- Weather Card -->
+    <div class="card weather-card">
+      <h2>Weather</h2>
+      <div class="weather-header">
+        <img id="weather-icon" class="weather-icon" src="https://openweathermap.org/img/wn/01d@2x.png" alt="Weather icon">
+        <p class="weather-temp" id="weather-temp">--°C</p>
+        <p class="weather-desc" id="weather-desc">Loading weather data...</p>
+        <p class="weather-humidity" id="weather-humidity">Humidity: --%</p>
+      </div>
+      
+      <p class="weather-update-time" id="weather-update-time">Last updated: --</p>
+      <p class="weather-api-calls">API calls: <span id="api-call-count">--</span></p>
+      <button class="button refresh" onclick="refreshWeather()">Update Weather</button>
+      <p><span class="settings-toggle" onclick="toggleWeatherSettings()">Weather Settings</span></p>
+    </div>
+    
+    <!-- System Info Card -->
     <div class="card">
       <h2>System Info</h2>
-      <p>LED Status: <span id="ledStatus" class="status off">OFF</span></p>
-      <p>Free Heap: <span id="freeHeap">---</span> bytes</p>
-      <p>Uptime: <span id="uptime">0</span> seconds</p>
-      <button class="refresh-button" onclick="refreshSystemInfo()">Refresh Info</button>
+      <div class="system-info-grid">
+        <div class="system-info-item">
+          <p>Free Heap</p>
+          <div class="value" id="freeHeap">--</div>
+        </div>
+        <div class="system-info-item">
+          <p>Heap Fragmentation</p>
+          <div class="value" id="heapFrag">--</div>
+        </div>
+        <div class="system-info-item">
+          <p>WiFi Signal</p>
+          <div class="value" id="wifiSignal">--</div>
+        </div>
+        <div class="system-info-item">
+          <p>Uptime</p>
+          <div class="value" id="uptime">0s</div>
+        </div>
+      </div>
+      <button class="button refresh" onclick="refreshSystemInfo()">Refresh Info</button>
+    </div>
+    
+    <!-- Weather Settings Card (Hidden by default) -->
+    <div class="card" id="weather-settings" style="display: none;">
+      <h2>Weather Settings</h2>
+      <div class="settings-form">
+        <div class="form-group">
+          <label for="api-key">OpenWeatherMap API Key:</label>
+          <input type="text" id="api-key" placeholder="Enter your API key">
+        </div>
+        <div class="form-group">
+          <label for="latitude">Latitude:</label>
+          <input type="number" step="0.000001" id="latitude" placeholder="e.g., 37.7749">
+        </div>
+        <div class="form-group">
+          <label for="longitude">Longitude:</label>
+          <input type="number" step="0.000001" id="longitude" placeholder="e.g., -122.4194">
+        </div>
+        <button class="button save" onclick="saveWeatherSettings()">Save Settings</button>
+        <div id="settings-status" class="status-message"></div>
+      </div>
     </div>
   </div>
 
@@ -122,37 +594,78 @@
     // Current state
     let ledState = false;
     let brightness = 100;
-    let uptimeSeconds = 0;
+    let isDarkMode = false;
+    
+    // Get DOM elements
+    const themeToggle = document.getElementById('theme-toggle');
+    const ledToggle = document.getElementById('ledToggle');
+    const ledIndicator = document.getElementById('led-indicator');
+    const ledStateLabel = document.getElementById('led-state');
+    const brightnessSlider = document.getElementById('brightnessSlider');
+    const brightnessValue = document.getElementById('brightnessValue');
     
     // Initialize page
     window.onload = function() {
+      // Check for saved theme preference
+      if (localStorage.getItem('darkMode') === 'true') {
+        enableDarkMode();
+      }
+      
       // Set initial values
-      document.getElementById('brightnessSlider').value = brightness;
-      document.getElementById('brightnessValue').textContent = brightness;
-      updateLEDStatus();
+      brightnessSlider.value = brightness;
+      brightnessValue.textContent = brightness;
       
-      // Start uptime counter
-      setInterval(() => {
-        document.getElementById('uptime').textContent = ++uptimeSeconds;
-      }, 1000);
-      
-      // Get initial system info
+      // Get initial system info and weather
       refreshSystemInfo();
+      refreshWeather();
+      loadWeatherSettings();
+      
+      // Start time updater
+      updateTime();
     };
     
-    // Brightness slider handlers
-    const slider = document.getElementById('brightnessSlider');
-    const brightnessValue = document.getElementById('brightnessValue');
+    // Theme Toggle
+    themeToggle.addEventListener('click', () => {
+      if (isDarkMode) {
+        disableDarkMode();
+      } else {
+        enableDarkMode();
+      }
+    });
     
-    slider.oninput = function() {
+    function enableDarkMode() {
+      document.body.classList.add('dark-mode');
+      themeToggle.textContent = '☀️';
+      isDarkMode = true;
+      localStorage.setItem('darkMode', 'true');
+    }
+    
+    function disableDarkMode() {
+      document.body.classList.remove('dark-mode');
+      themeToggle.textContent = '🌙';
+      isDarkMode = false;
+      localStorage.setItem('darkMode', 'false');
+    }
+    
+    // LED Toggle
+    ledToggle.addEventListener('change', function() {
+      setLED(this.checked);
+    });
+    
+    // Brightness slider handlers
+    brightnessSlider.oninput = function() {
       brightnessValue.textContent = this.value;
     };
     
-    slider.onchange = function() {
+    brightnessSlider.onchange = function() {
       brightness = parseInt(this.value);
       fetch('/brightness?value=' + brightness)
         .then(response => {
           console.log('Brightness updated');
+          // Update the visual feedback if LED is on
+          if (ledState) {
+            updateLEDVisual();
+          }
         })
         .catch(error => {
           console.error('Error updating brightness:', error);
@@ -176,9 +689,177 @@
     
     // Update LED status display
     function updateLEDStatus() {
-      const statusElement = document.getElementById('ledStatus');
-      statusElement.textContent = ledState ? 'ON' : 'OFF';
-      statusElement.className = 'status ' + (ledState ? 'on' : 'off');
+      // Update toggle switch
+      ledToggle.checked = ledState;
+      
+      // Update text label
+      ledStateLabel.textContent = ledState ? 'ON' : 'OFF';
+      
+      // Update visual indicator
+      updateLEDVisual();
+    }
+    
+    // Update LED visual indicator
+    function updateLEDVisual() {
+      if (ledState) {
+        ledIndicator.classList.add('on');
+        // Could potentially adjust brightness of visual too
+        const brightnessPercent = (brightness / 255) * 100;
+        ledIndicator.style.opacity = (brightnessPercent / 100) + 0.2; // Minimum opacity 0.2
+      } else {
+        ledIndicator.classList.remove('on');
+        ledIndicator.style.opacity = 1;
+      }
+    }
+    
+    // Update time display in a more human-readable format
+    function updateTime() {
+      // Update every second
+      setInterval(() => {
+        fetch('/system-info')
+          .then(response => response.json())
+          .then(data => {
+            if (data.uptime !== undefined) {
+              const uptime = parseInt(data.uptime);
+              const days = Math.floor(uptime / 86400);
+              const hours = Math.floor((uptime % 86400) / 3600);
+              const minutes = Math.floor((uptime % 3600) / 60);
+              const seconds = uptime % 60;
+              
+              let uptimeStr = '';
+              if (days > 0) uptimeStr += days + 'd ';
+              if (hours > 0) uptimeStr += hours + 'h ';
+              if (minutes > 0) uptimeStr += minutes + 'm ';
+              if (days === 0 && hours === 0) uptimeStr += seconds + 's';
+              
+              document.getElementById('uptime').textContent = uptimeStr;
+            }
+          })
+          .catch(error => {
+            console.error('Error updating time:', error);
+          });
+      }, 1000);
+    }
+    
+    // Refresh weather data
+    function refreshWeather() {
+      fetch('/weather')
+        .then(response => response.json())
+        .then(data => {
+          // Update temperature and description
+          document.getElementById('weather-temp').textContent = Math.round(data.temperature) + '°C';
+          document.getElementById('weather-desc').textContent = data.description;
+          
+          // Update weather icon
+          const iconCode = data.icon;
+          document.getElementById('weather-icon').src = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+          
+          // Update last refresh time
+          document.getElementById('weather-update-time').textContent = 'Last updated: ' + data.lastUpdate;
+          
+          // Update API call count if available
+          if (data.apiCallCount !== undefined) {
+            document.getElementById('api-call-count').textContent = data.apiCallCount;
+          }
+
+          // Update humidity if available
+          if (data.humidity !== undefined) {
+            document.getElementById('weather-humidity').textContent = 'Humidity: ' + data.humidity + '%';
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching weather data:', error);
+          document.getElementById('weather-desc').textContent = 'Error loading weather data';
+        });
+    }
+    
+    // Toggle weather settings visibility
+    function toggleWeatherSettings() {
+      const settingsDiv = document.getElementById('weather-settings');
+      if (settingsDiv.style.display === 'none') {
+        settingsDiv.style.display = 'block';
+      } else {
+        settingsDiv.style.display = 'none';
+      }
+    }
+    
+    // Load weather settings from the server
+    function loadWeatherSettings() {
+      fetch('/weather-settings')
+        .then(response => response.json())
+        .then(data => {
+          if (data.apiKey) {
+            document.getElementById('api-key').value = data.apiKey;
+          }
+          if (data.latitude) {
+            document.getElementById('latitude').value = data.latitude;
+          }
+          if (data.longitude) {
+            document.getElementById('longitude').value = data.longitude;
+          }
+        })
+        .catch(error => {
+          console.error('Error loading weather settings:', error);
+        });
+    }
+    
+    // Save weather settings to the server
+    function saveWeatherSettings() {
+      const apiKey = document.getElementById('api-key').value.trim();
+      const latitude = parseFloat(document.getElementById('latitude').value);
+      const longitude = parseFloat(document.getElementById('longitude').value);
+      
+      // Validate inputs
+      if (!apiKey) {
+        showSettingsStatus('Please enter an API key', false);
+        return;
+      }
+      
+      if (isNaN(latitude) || isNaN(longitude)) {
+        showSettingsStatus('Please enter valid coordinates', false);
+        return;
+      }
+      
+      const settingsData = {
+        apiKey: apiKey,
+        latitude: latitude,
+        longitude: longitude
+      };
+      
+      fetch('/weather-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(settingsData)
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to save settings');
+        }
+        return response.json();
+      })
+      .then(data => {
+        showSettingsStatus('Settings saved successfully!', true);
+        // Refresh weather data with new settings
+        setTimeout(refreshWeather, 1000);
+      })
+      .catch(error => {
+        console.error('Error saving settings:', error);
+        showSettingsStatus('Error saving settings', false);
+      });
+    }
+    
+    // Show status message in settings form
+    function showSettingsStatus(message, isSuccess) {
+      const statusElement = document.getElementById('settings-status');
+      statusElement.textContent = message;
+      statusElement.className = 'status-message ' + (isSuccess ? 'success' : 'error');
+      
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        statusElement.className = 'status-message';
+      }, 3000);
     }
     
     // Refresh system information
@@ -186,7 +867,23 @@
       fetch('/system-info')
         .then(response => response.json())
         .then(data => {
-          document.getElementById('freeHeap').textContent = data.freeHeap || '---';
+          console.log('System info data:', data); // Add logging to debug
+          
+          // Update heap info with nice formatting
+          if (data.freeHeap !== undefined) {
+            const heap = parseInt(data.freeHeap);
+            document.getElementById('freeHeap').textContent = formatBytes(heap);
+          }
+          
+          // Update heap fragmentation if available
+          if (data.heapFragmentation !== undefined) {
+            document.getElementById('heapFrag').textContent = data.heapFragmentation + '%';
+          }
+          
+          // Update WiFi signal if available
+          if (data.wifiSignal !== undefined) {
+            document.getElementById('wifiSignal').textContent = data.wifiSignal + ' dBm';
+          }
           
           // If the API includes the LED state, update it
           if (data.ledState !== undefined) {
@@ -197,13 +894,25 @@
           // If the API includes brightness, update it
           if (data.brightness !== undefined) {
             brightness = data.brightness;
-            document.getElementById('brightnessSlider').value = brightness;
-            document.getElementById('brightnessValue').textContent = brightness;
+            brightnessSlider.value = brightness;
+            brightnessValue.textContent = brightness;
+            
+            // Update visual if LED is on
+            if (ledState) {
+              updateLEDVisual();
+            }
           }
         })
         .catch(error => {
           console.error('Error fetching system info:', error);
         });
+    }
+    
+    // Format bytes to KB, MB
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+      else return (bytes / 1048576).toFixed(1) + " MB";
     }
   </script>
 </body>

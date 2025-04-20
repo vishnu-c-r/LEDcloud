@@ -6,6 +6,9 @@
 #include <functional>
 #include <Ticker.h>
 #include "CustomWiFiManager.h"
+#include "Weather.h"
+#include "WebServer.h"
+#include "Config.h"
 
 /**
  * @struct TaskConfig
@@ -23,30 +26,47 @@ struct TaskConfig {
 
 /**
  * @class Protocol
- * @brief Task scheduler and manager that follows the Singleton pattern
+ * @brief Task scheduler and system manager that follows the Singleton pattern
  * 
- * This class manages all scheduled tasks in the system and coordinates
- * their execution. It ensures there's only one instance of the task manager.
+ * This class manages all system components and scheduled tasks, coordinating
+ * their execution. It ensures there's only one instance of the system manager.
  */
 class Protocol {
 private:
     static Protocol* instance;         // Singleton instance pointer
     std::vector<TaskConfig> tasks;     // Container for all registered tasks
-    CustomWiFiManager& wifiManager;    // Reference to WiFi manager
-
+    
+    // System components
+    CustomWiFiManager* wifiManager;    // WiFi manager 
+    Weather* weatherService;           // Weather service
+    WebServer* webServer;              // Web server
+    
+    // System state
+    bool* ledState;                    // LED state reference
+    int* brightness;                   // LED brightness reference
+    
     /**
      * @brief Private constructor to enforce Singleton pattern
-     * @param wifiMgr Reference to the WiFi manager instance
      */
-    Protocol(CustomWiFiManager& wifiMgr);
+    Protocol();
 
 public:
     /**
      * @brief Gets or creates the singleton instance
-     * @param wifiMgr Reference to the WiFi manager
      * @return Pointer to the Protocol instance
      */
-    static Protocol* getInstance(CustomWiFiManager& wifiMgr);
+    static Protocol* getInstance();
+    
+    /**
+     * @brief Initializes all system components
+     * @return true if all components initialized successfully
+     */
+    bool initializeSystem();
+    
+    /**
+     * @brief Sets up all system tasks
+     */
+    void setupTasks();
     
     /**
      * @brief Clears all tasks, preparing for new configuration
@@ -71,12 +91,34 @@ public:
      */
     void createTask(const char* name, std::function<void(void)> taskFunction, 
                    uint32_t interval_ms);
-
+                   
+    /**
+     * @brief Task function to update weather information
+     */
+    void weatherUpdateTask();
+    
+    /**
+     * @brief Task function to monitor system resources
+     */
+    void systemMonitorTask();
+    
     /**
      * @brief Gets the WiFi manager instance
-     * @return Reference to the CustomWiFiManager
+     * @return Pointer to the CustomWiFiManager
      */
-    CustomWiFiManager& getWiFiManager() { return wifiManager; }
+    CustomWiFiManager* getWiFiManager() { return wifiManager; }
+    
+    /**
+     * @brief Gets the WebServer instance
+     * @return Pointer to the WebServer
+     */
+    WebServer* getWebServer() { return webServer; }
+    
+    /**
+     * @brief Gets the Weather service instance
+     * @return Pointer to the Weather service
+     */
+    Weather* getWeatherService() { return weatherService; }
 };
 
 #endif // PROTOCOL_H

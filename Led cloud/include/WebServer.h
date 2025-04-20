@@ -40,6 +40,21 @@ private:
      */
     static void notFound(AsyncWebServerRequest *request);
     
+    /**
+     * @brief Set up routes for LED control
+     */
+    void setupLEDRoutes();
+    
+    /**
+     * @brief Set up routes for system information
+     */
+    void setupSystemRoutes();
+    
+    /**
+     * @brief Set up routes for weather data
+     */
+    void setupWeatherRoutes();
+    
 public:
     /**
      * @brief Constructor
@@ -71,6 +86,12 @@ public:
      * @param country Optional country code
      */
     void initWeather(const String& apiKey, const String& city, const String& country = "");
+    
+    /**
+     * @brief Set the weather service instance
+     * @param weather Pointer to the Weather instance
+     */
+    void setWeatherService(Weather* weather);
 };
 
 #endif // WEBSERVER_H
