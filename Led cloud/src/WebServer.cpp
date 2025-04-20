@@ -1,5 +1,6 @@
 #include "HttpConstants.h" // Include HTTP constants first
 #include "WebServer.h"
+#include "NeoPixel.h" // Include NeoPixel.h for NeoPixel class references
 
 // Define the onboard LED pin for ESP8266
 #define LED_BUILTIN_PIN LED_BUILTIN // Use the predefined LED_BUILTIN
@@ -107,6 +108,7 @@ void WebServer::setupRoutes()
     setupLEDRoutes();
     setupSystemRoutes();
     setupWeatherRoutes();
+    setupNeoPixelRoutes();
 
     // Route for root / web page
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -251,6 +253,83 @@ void WebServer::setupWeatherRoutes()
         } else {
             request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Failed to save settings\"}");
         } });
+}
+
+/**
+ * @brief Set up routes for NeoPixel control
+ */
+void WebServer::setupNeoPixelRoutes() {
+    // Set all LEDs to a color (POST: {"r":int, "g":int, "b":int})
+    server.on("/neopixel/setAll", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, data, len);
+            if (error) {
+                request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+                return;
+            }
+            int r = doc["r"] | 0;
+            int g = doc["g"] | 0;
+            int b = doc["b"] | 0;
+            NeoPixel::getInstance()->setAllPixels(NeoPixel::getInstance()->rgbToColor(r, g, b));
+            NeoPixel::getInstance()->show();
+            request->send(200, "application/json", "{\"status\":\"ok\"}");
+        }
+    );
+
+    // Set a specific LED's color (POST: {"index":int, "r":int, "g":int, "b":int})
+    server.on("/neopixel/setPixel", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, data, len);
+            if (error) {
+                request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+                return;
+            }
+            int idx = doc["index"] | 0;
+            int r = doc["r"] | 0;
+            int g = doc["g"] | 0;
+            int b = doc["b"] | 0;
+            NeoPixel::getInstance()->updatePixelColor(idx, r, g, b);
+            request->send(200, "application/json", "{\"status\":\"ok\"}");
+        }
+    );
+
+    // Set pattern (POST: {"pattern":int})
+    server.on("/neopixel/setPattern", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, data, len);
+            if (error) {
+                request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+                return;
+            }
+            int pattern = doc["pattern"] | 0;
+            NeoPixel::getInstance()->setPattern(static_cast<PatternType>(pattern));
+            request->send(200, "application/json", "{\"status\":\"ok\"}");
+        }
+    );
+
+    // Set brightness (POST: {"brightness":int})
+    server.on("/neopixel/setBrightness", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, data, len);
+            if (error) {
+                request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+                return;
+            }
+            int brightness = doc["brightness"] | 0;
+            NeoPixel::getInstance()->setBrightness(brightness);
+            request->send(200, "application/json", "{\"status\":\"ok\"}");
+        }
+    );
+
+    // Get NeoPixel status (GET)
+    server.on("/neopixel/status", HTTP_GET, [](AsyncWebServerRequest *request) {
+        String status = NeoPixel::getInstance()->getStatusJson();
+        request->send(200, "application/json", status);
+    });
 }
 
 /**

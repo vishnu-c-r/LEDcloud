@@ -55,6 +55,11 @@ private:
      */
     void setupWeatherRoutes();
     
+    /**
+     * @brief Set up routes for NeoPixel control
+     */
+    void setupNeoPixelRoutes();
+    
 public:
     /**
      * @brief Constructor

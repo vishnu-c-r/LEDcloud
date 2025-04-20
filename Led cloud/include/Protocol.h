@@ -9,6 +9,7 @@
 #include "Weather.h"
 #include "WebServer.h"
 #include "Config.h"
+#include "NeoPixel.h"
 
 /**
  * @struct TaskConfig
@@ -40,6 +41,7 @@ private:
     CustomWiFiManager* wifiManager;    // WiFi manager 
     Weather* weatherService;           // Weather service
     WebServer* webServer;              // Web server
+    NeoPixel* neoPixel;                // NeoPixel manager
     
     // System state
     bool* ledState;                    // LED state reference
@@ -101,6 +103,11 @@ public:
      * @brief Task function to monitor system resources
      */
     void systemMonitorTask();
+    
+    /**
+     * @brief Task function to update NeoPixel patterns
+     */
+    void neoPixelTask();
     
     /**
      * @brief Gets the WiFi manager instance

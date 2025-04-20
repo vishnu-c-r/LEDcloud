@@ -18,7 +18,7 @@
     }
 
     body.dark-mode {
-      --primary-color: #4dabf7;
+      --primary-color: #003c6d;
       --success-color: #51cf66;
       --danger-color: #fa5252;
       --dark-color: #121212;
@@ -588,6 +588,80 @@
         <div id="settings-status" class="status-message"></div>
       </div>
     </div>
+
+    <!-- NeoPixel Control Card -->
+    <div class="card" id="neopixel-card">
+      <h2>NeoPixel Control (60 LEDs)</h2>
+      <div style="margin-bottom: 10px;">
+        <label><b>Set All LEDs Color:</b> <input type="color" id="neopixel-all-color" value="#ffffff"></label>
+        <button class="button" onclick="setAllNeoPixelColor()">Set All</button>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <b>LED Groups:</b>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
+          <div>
+            <label>Group 1 (1-15): <input type="color" id="group1-color" value="#ff0000"></label>
+            <button class="button" onclick="setGroupColor(0, 15)">Set</button>
+          </div>
+          <div>
+            <label>Group 2 (16-30): <input type="color" id="group2-color" value="#00ff00"></label>
+            <button class="button" onclick="setGroupColor(15, 30)">Set</button>
+          </div>
+          <div>
+            <label>Group 3 (31-45): <input type="color" id="group3-color" value="#0000ff"></label>
+            <button class="button" onclick="setGroupColor(30, 45)">Set</button>
+          </div>
+          <div>
+            <label>Group 4 (46-60): <input type="color" id="group4-color" value="#ffff00"></label>
+            <button class="button" onclick="setGroupColor(45, 60)">Set</button>
+          </div>
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <b>Individual LED Controls:</b>
+        <div style="margin-top: 5px;">
+          <label for="led-selector">Select LED: </label>
+          <select id="led-selector" style="padding: 5px;">
+            <option value="">Select LED...</option>
+          </select>
+          <input type="color" id="selected-led-color" value="#ffffff">
+          <button class="button" onclick="setSingleLedColor()">Set Color</button>
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 10px;">
+        <b>All LED Colors:</b>
+        <div style="margin-top: 5px; max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">
+          <div id="neopixel-pickers" style="display: flex; gap: 5px; flex-wrap: wrap;"></div>
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 10px;">
+        <label><b>Pattern:</b>
+          <select id="neopixel-pattern">
+            <option value="0">Off</option>
+            <option value="1">All Red</option>
+            <option value="2">Rainbow</option>
+            <option value="3">Chase</option>
+            <option value="4">Fade</option>
+            <option value="5">Twinkle</option>
+            <option value="6">Fire</option>
+            <option value="7">Rain</option>
+            <option value="8">Color Wipe</option>
+          </select>
+        </label>
+        <button class="button" onclick="setNeoPixelPattern()">Set Pattern</button>
+      </div>
+      <div class="brightness-container">
+        <h3>Brightness</h3>
+        <input type="range" min="0" max="255" value="50" class="brightness-slider" id="neopixel-brightness">
+        <div class="brightness-value"><span id="neopixel-brightness-value">50</span></div>
+        <button class="button" onclick="setNeoPixelBrightness()">Set Brightness</button>
+      </div>
+      <button class="button refresh" onclick="refreshNeoPixelStatus()">Refresh Status</button>
+    </div>
   </div>
 
   <script>
@@ -619,6 +693,10 @@
       refreshSystemInfo();
       refreshWeather();
       loadWeatherSettings();
+      
+      // Set up NeoPixel UI
+      setupNeoPixelUI();
+      refreshNeoPixelStatus();
       
       // Start time updater
       updateTime();
@@ -867,7 +945,7 @@
       fetch('/system-info')
         .then(response => response.json())
         .then(data => {
-          console.log('System info data:', data); // Add logging to debug
+          console.log('System info data:', data);
           
           // Update heap info with nice formatting
           if (data.freeHeap !== undefined) {
@@ -913,6 +991,211 @@
       if (bytes < 1024) return bytes + " B";
       else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
       else return (bytes / 1048576).toFixed(1) + " MB";
+    }
+
+    // --- NeoPixel Implementation ---
+    const NUM_PIXELS = 60;
+    let neopixelColors = Array(NUM_PIXELS).fill("#000000");
+    
+    // Set up the NeoPixel UI elements
+    function setupNeoPixelUI() {
+      // Set up the LED selector dropdown
+      const ledSelector = document.getElementById('led-selector');
+      ledSelector.innerHTML = '<option value="">Select LED...</option>';
+      for (let i = 0; i < NUM_PIXELS; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = `LED ${i+1}`;
+        ledSelector.appendChild(option);
+      }
+      
+      // Create color pickers for each LED
+      const pickersContainer = document.getElementById('neopixel-pickers');
+      pickersContainer.innerHTML = '';
+      for (let i = 0; i < NUM_PIXELS; i++) {
+        const pickerContainer = document.createElement('div');
+        pickerContainer.style.display = 'flex';
+        pickerContainer.style.flexDirection = 'column';
+        pickerContainer.style.alignItems = 'center';
+        pickerContainer.style.margin = '2px';
+        
+        const label = document.createElement('span');
+        label.textContent = `${i+1}`;
+        label.style.fontSize = '10px';
+        
+        const picker = document.createElement('input');
+        picker.type = 'color';
+        picker.id = `neopixel-color-${i}`;
+        picker.value = "#000000";
+        picker.style.width = '25px';
+        picker.style.height = '25px';
+        picker.addEventListener('change', function() {
+          neopixelColors[i] = this.value;
+          setSingleLedColor(i, this.value);
+        });
+        
+        pickerContainer.appendChild(label);
+        pickerContainer.appendChild(picker);
+        pickersContainer.appendChild(pickerContainer);
+      }
+      
+      // Set brightness slider handler
+      document.getElementById('neopixel-brightness').addEventListener('input', function() {
+        document.getElementById('neopixel-brightness-value').innerText = this.value;
+      });
+    }
+    
+    // Set all NeoPixels to a single color
+    function setAllNeoPixelColor() {
+      const color = document.getElementById('neopixel-all-color').value;
+      const rgb = hexToRgb(color);
+      
+      fetch('/neopixel/setAll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ r: rgb.r, g: rgb.g, b: rgb.b })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('All LEDs color set:', data);
+        // Update all color pickers
+        for (let i = 0; i < NUM_PIXELS; i++) {
+          document.getElementById(`neopixel-color-${i}`).value = color;
+          neopixelColors[i] = color;
+        }
+      })
+      .catch(error => console.error('Error setting all LEDs color:', error));
+    }
+    
+    // Set a single LED color from UI
+    function setSingleLedColor() {
+      const ledIndex = document.getElementById('led-selector').value;
+      if (!ledIndex) {
+        alert('Please select an LED first');
+        return;
+      }
+      
+      const color = document.getElementById('selected-led-color').value;
+      setSingleLedColor(ledIndex, color);
+    }
+    
+    // Set a single LED color via API
+    function setSingleLedColor(index, color) {
+      const rgb = hexToRgb(color);
+      fetch('/neopixel/setPixel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index: parseInt(index), r: rgb.r, g: rgb.g, b: rgb.b })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('LED color set:', data);
+        // Update the corresponding color picker
+        document.getElementById(`neopixel-color-${index}`).value = color;
+        neopixelColors[index] = color;
+      })
+      .catch(error => console.error('Error setting LED color:', error));
+    }
+    
+    // Set color for a group of LEDs
+    function setGroupColor(startIndex, endIndex) {
+      const groupNum = Math.floor(startIndex / 15) + 1;
+      const color = document.getElementById(`group${groupNum}-color`).value;
+      const rgb = hexToRgb(color);
+      
+      // Set colors for all LEDs in the group
+      const promises = [];
+      for (let i = startIndex; i < endIndex; i++) {
+        promises.push(
+          fetch('/neopixel/setPixel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: i, r: rgb.r, g: rgb.g, b: rgb.b })
+          })
+        );
+        // Update the corresponding color picker
+        document.getElementById(`neopixel-color-${i}`).value = color;
+        neopixelColors[i] = color;
+      }
+      
+      Promise.all(promises)
+        .then(() => console.log(`Group ${groupNum} LEDs color set`))
+        .catch(error => console.error(`Error setting group ${groupNum} LEDs color:`, error));
+    }
+    
+    // Set NeoPixel pattern
+    function setNeoPixelPattern() {
+      const pattern = parseInt(document.getElementById('neopixel-pattern').value);
+      
+      fetch('/neopixel/setPattern', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pattern: pattern })
+      })
+      .then(response => response.json())
+      .then(data => console.log('Pattern set:', data))
+      .catch(error => console.error('Error setting pattern:', error));
+    }
+    
+    // Set NeoPixel brightness
+    function setNeoPixelBrightness() {
+      const brightness = parseInt(document.getElementById('neopixel-brightness').value);
+      
+      fetch('/neopixel/setBrightness', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brightness: brightness })
+      })
+      .then(response => response.json())
+      .then(data => console.log('Brightness set:', data))
+      .catch(error => console.error('Error setting brightness:', error));
+    }
+    
+    // Refresh NeoPixel status
+    function refreshNeoPixelStatus() {
+      fetch('/neopixel/status')
+        .then(response => response.json())
+        .then(data => {
+          console.log('NeoPixel status:', data);
+          
+          // Update brightness
+          if (data.brightness !== undefined) {
+            document.getElementById('neopixel-brightness').value = data.brightness;
+            document.getElementById('neopixel-brightness-value').innerText = data.brightness;
+          }
+          
+          // Update pattern
+          if (data.pattern !== undefined) {
+            document.getElementById('neopixel-pattern').value = data.pattern;
+          }
+          
+          // Update color pickers
+          if (data.pixels && Array.isArray(data.pixels)) {
+            for (let i = 0; i < Math.min(data.pixels.length, NUM_PIXELS); i++) {
+              const color = color32ToHex(data.pixels[i]);
+              document.getElementById(`neopixel-color-${i}`).value = color;
+              neopixelColors[i] = color;
+            }
+          }
+        })
+        .catch(error => console.error('Error getting NeoPixel status:', error));
+    }
+    
+    // Helper function: Convert hex color to RGB
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : { r: 0, g: 0, b: 0 };
+    }
+    
+    // Helper function: Convert uint32 color to #RRGGBB
+    function color32ToHex(c) {
+      let hex = Number(c).toString(16);
+      hex = hex.padStart(6, '0');
+      return '#' + hex.slice(-6);
     }
   </script>
 </body>

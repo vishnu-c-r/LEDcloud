@@ -75,6 +75,11 @@ bool Protocol::initializeSystem()
     webServer->begin();
     Serial.println("Web server initialized");
 
+    // Initialize NeoPixel
+    neoPixel = NeoPixel::getInstance();
+    neoPixel->begin();
+    Serial.println("NeoPixel initialized");
+
     return true;
 }
 
@@ -103,6 +108,9 @@ void Protocol::setupTasks()
     // Create system monitor task
     createTask("SystemMonitor", [this]()
                { systemMonitorTask(); }, HEAP_CHECK_INTERVAL);
+
+    // Create NeoPixel pattern update task (e.g., every 50ms for smooth animation)
+    createTask("NeoPixelUpdate", [this]() { neoPixelTask(); }, 50);
 
     // Start all tasks including WiFi monitoring
     startAllTasks();
@@ -225,4 +233,20 @@ void Protocol::createTask(const char *name, std::function<void(void)> taskFuncti
 
     tasks.push_back(newTask);
     Serial.printf("Task '%s' created successfully\n", name);
+}
+
+/**
+ * @brief Task function to update NeoPixel pattern
+ */
+void Protocol::neoPixelTask()
+{
+    if (neoPixel) {
+        // Update the current animation pattern
+        neoPixel->update();
+        
+        // Only call show if we're in an active animation mode
+        if (neoPixel->isAnimationActive()) {
+            neoPixel->show();
+        }
+    }
 }
