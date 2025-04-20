@@ -1,3 +1,18 @@
+// NeoPixel.cpp
+// Implementation of NeoPixel LED control and animation patterns for the LED Cloud project.
+// Handles initialization, color updates, brightness, and pattern animations for a WS2812 LED strip.
+// Requires Adafruit_NeoPixel library.
+//
+// Author: Vishnu CR
+// Date: April 21, 2025
+//
+// Usage:
+//   - Call NeoPixel::getInstance() to get the singleton instance.
+//   - Use setPattern(), setBrightness(), setAllPixels(), update() for control.
+//   - update() should be called periodically (e.g., from a task or loop).
+//
+// Patterns supported: Off, Red, Rainbow, Chase, Fade, Twinkle, Fire, Rain, Color Wipe
+
 #include "NeoPixel.h"
 #include <Adafruit_NeoPixel.h>
 #include <ArduinoJson.h>
