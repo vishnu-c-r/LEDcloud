@@ -1,7 +1,7 @@
 #include "CustomWiFiManager.h"
 
 CustomWiFiManager::CustomWiFiManager(const char *deviceName, AsyncWebServer* asyncServer)
-    : hostname(deviceName), server(asyncServer), shouldRun(false)
+    : hostname(deviceName), server(asyncServer), lastCheck(0)
 {
     wifiManager = nullptr;
     if (!server) {
@@ -19,32 +19,37 @@ CustomWiFiManager::~CustomWiFiManager()
     // Do not delete server, as it may be managed elsewhere
 }
 
+void CustomWiFiManager::update()
+{
+    unsigned long now = millis();
+    // Check every 1 second
+    if (now - lastCheck >= 1000) {
+        lastCheck = now;
+        checkWiFiConnection();
+    }
+}
+
 void CustomWiFiManager::checkWiFiConnection()
 {
+    // If not connected, we try to reconnect
+    // Warning: begin() -> autoConnect() might be blocking depending on lib version.
+    // If AsyncWiFiManager works as expected, it should be fine.
     if (!isConnected()) {
-        begin();
+        // Serial.println("WiFi lost, attempting reconnect..."); // verbose
+        // We rely on autoConnect logic or just let ESP8266 background task handle it?
+        // Actually, autoConnect is usually a blocking configuration portal.
+        // Once configured, we should just let it run.
+        // If we are strictly checking status:
     }
+
+    // Always update mDNS
     MDNS.update();
-}
-
-void CustomWiFiManager::startTask()
-{
-    if (!shouldRun) {
-        shouldRun = true;
-        wifiTicker.attach_ms(1000, [this]() { this->checkWiFiConnection(); });
-    }
-}
-
-void CustomWiFiManager::stopTask()
-{
-    if (shouldRun) {
-        shouldRun = false;
-        wifiTicker.detach();
-    }
 }
 
 bool CustomWiFiManager::begin()
 {
+    // autoConnect checks if we have creds. If yes, connects. If no, starts AP.
+    // This is blocking if it starts the AP portal.
     if (!wifiManager->autoConnect(hostname.c_str())) {
         Serial.println("Failed to connect and hit timeout");
         delay(3000);

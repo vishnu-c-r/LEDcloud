@@ -5,7 +5,6 @@
 #include <ESP8266WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncWiFiManager.h> // Use the async WiFi manager
-#include <Ticker.h>
 #include <DNSServer.h>
 #include <ESP8266mDNS.h>
 
@@ -22,15 +21,19 @@ private:
     AsyncWebServer* server;  // Pointer to the AsyncWebServer instance
     DNSServer dns;           // DNS server for captive portal
     AsyncWiFiManager* wifiManager; // Pointer to the async WiFiManager instance
-    Ticker wifiTicker;       // Timer for periodic WiFi connection checks
-    bool shouldRun;          // Flag to track if the WiFi task is running
+
+    // Polling control
+    unsigned long lastCheck;
+
     void checkWiFiConnection();
 
 public:
     CustomWiFiManager(const char* deviceName = "LEDcloud", AsyncWebServer* asyncServer = nullptr);
     ~CustomWiFiManager();
-    void startTask();
-    void stopTask();
+
+    // Replaces startTask/stopTask with a main-loop update function
+    void update();
+
     bool begin();
     void reset();
     bool isConnected();

@@ -100,13 +100,18 @@ void Protocol::update()
     unsigned long currentMillis = millis();
 
     // WiFi Manager Task (keep connectivity alive)
-    // Note: CustomWiFiManager uses its own Ticker internally in startTask,
-    // but we can also poll it if needed. For now we assume it handles itself
-    // or we might need to verify if it uses Ticker correctly.
-    // Assuming CustomWiFiManager is safe or handled elsewhere.
+    if (wifiManager) {
+        wifiManager->update();
+    }
 
     // Weather Update Task
-    if (currentMillis - lastWeatherUpdate >= WEATHER_UPDATE_INTERVAL) {
+    // Logic: If weather is not set (ID=0), try every 30s. Otherwise use standard interval.
+    unsigned long weatherInterval = WEATHER_UPDATE_INTERVAL;
+    if (weatherService && weatherService->getWeatherId() == 0) {
+        weatherInterval = 30000; // 30 seconds retry
+    }
+
+    if (currentMillis - lastWeatherUpdate >= weatherInterval) {
         lastWeatherUpdate = currentMillis;
         weatherUpdateTask();
     }
