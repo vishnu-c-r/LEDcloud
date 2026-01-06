@@ -6,7 +6,6 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
-#include <Ticker.h>
 #include <LittleFS.h>
 #include "Config.h" // Include the configuration file
 
@@ -25,16 +24,13 @@ private:
     
     // Weather data
     float temperature;
-    int humidity;    // Added humidity field
+    int humidity;
+    int weatherId; // OpenWeatherMap condition code
     String weatherDescription;
     String weatherIcon;
     
     // Update tracking
     unsigned long lastUpdateTime;
-    bool shouldRun;
-    
-    // Ticker for scheduling updates
-    Ticker weatherTicker;
     
     // Settings file path
     static const char* SETTINGS_FILE;
@@ -75,12 +71,6 @@ public:
     // Update weather data with new settings
     bool updateSettings(const String& apiKey, float latitude, float longitude);
     
-    // Start the weather update task
-    void startTask();
-    
-    // Stop the weather update task
-    void stopTask();
-    
     // Fetch weather data from API
     void fetchWeatherData();
     
@@ -95,7 +85,8 @@ public:
     
     // Getters for weather data
     float getTemperature() const { return temperature; }
-    int getHumidity() const { return humidity; }    // Added getter for humidity
+    int getHumidity() const { return humidity; }
+    int getWeatherId() const { return weatherId; } // Added getter for weather ID
     String getDescription() const { return weatherDescription; }
     String getIcon() const { return weatherIcon; }
     String getLastUpdateTime() const;
