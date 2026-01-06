@@ -11,7 +11,11 @@ Protocol *Protocol::instance = nullptr;
 Protocol::Protocol()
     : wifiManager(nullptr),
       weatherService(nullptr),
-      webServer(nullptr)
+      webServer(nullptr),
+      neoPixel(nullptr),
+      lastWeatherUpdate(0),
+      lastSystemMonitor(0),
+      lastNeoPixelUpdate(0)
 {
 
     // Allocate memory for LED state and brightness
@@ -80,44 +84,46 @@ bool Protocol::initializeSystem()
     neoPixel->begin();
     Serial.println("NeoPixel initialized");
 
+    // Update LED based on initial weather (if available)
+    if (weatherService->getWeatherId() != 0) {
+        updateLedBasedOnWeather(weatherService->getWeatherId());
+    }
+
     return true;
 }
 
 /**
- * @brief Sets up all system tasks
- *
- * Registers weather updates, system monitoring, and other periodic tasks
+ * @brief Main loop update function
  */
-void Protocol::setupTasks()
+void Protocol::update()
 {
-    // Clear any existing tasks
-    initializeTasks();
+    unsigned long currentMillis = millis();
 
-    // Create weather update task - use Config.h value and ensure it's not too frequent
-    unsigned long weatherInterval = WEATHER_UPDATE_INTERVAL;
-    // Ensure minimum 10 minute interval for weather updates to prevent API rate limiting
-    if (weatherInterval < 600000)
-    {
-        Serial.println("WARNING: Weather update interval too short, increasing to 10 minutes minimum");
-        weatherInterval = 600000; // 10 minutes in milliseconds
+    // WiFi Manager Task (keep connectivity alive)
+    // Note: CustomWiFiManager uses its own Ticker internally in startTask,
+    // but we can also poll it if needed. For now we assume it handles itself
+    // or we might need to verify if it uses Ticker correctly.
+    // Assuming CustomWiFiManager is safe or handled elsewhere.
+
+    // Weather Update Task
+    if (currentMillis - lastWeatherUpdate >= WEATHER_UPDATE_INTERVAL) {
+        lastWeatherUpdate = currentMillis;
+        weatherUpdateTask();
     }
 
-    createTask("WeatherUpdate", [this]()
-               { weatherUpdateTask(); }, weatherInterval);
+    // System Monitor Task
+    if (currentMillis - lastSystemMonitor >= HEAP_CHECK_INTERVAL) {
+        lastSystemMonitor = currentMillis;
+        systemMonitorTask();
+    }
 
-    // Create system monitor task
-    createTask("SystemMonitor", [this]()
-               { systemMonitorTask(); }, HEAP_CHECK_INTERVAL);
-
-    // Create NeoPixel pattern update task (e.g., every 50ms for smooth animation)
-    createTask("NeoPixelUpdate", [this]() { neoPixelTask(); }, 50);
-
-    // Start all tasks including WiFi monitoring
-    startAllTasks();
-
-    Serial.println("All system tasks configured and started");
-    Serial.printf("Weather updates scheduled every %lu minutes\n", weatherInterval / 60000);
+    // NeoPixel Update Task (Animation)
+    if (currentMillis - lastNeoPixelUpdate >= 50) { // 20fps approx
+        lastNeoPixelUpdate = currentMillis;
+        neoPixelTask();
+    }
 }
+
 
 /**
  * @brief Task function to update weather information
@@ -127,7 +133,46 @@ void Protocol::weatherUpdateTask()
     if (weatherService)
     {
         weatherService->fetchWeatherData();
+        int weatherId = weatherService->getWeatherId();
+        if (weatherId != 0) {
+            updateLedBasedOnWeather(weatherId);
+        }
     }
+}
+
+void Protocol::updateLedBasedOnWeather(int weatherId) {
+    if (!neoPixel) return;
+
+    // OpenWeatherMap Condition Codes: https://openweathermap.org/weather-conditions
+    PatternType newPattern = PATTERN_OFF;
+
+    if (weatherId >= 200 && weatherId < 300) {
+        // Thunderstorm
+        newPattern = PATTERN_CHASE; // Or maybe a custom lightning effect
+    } else if (weatherId >= 300 && weatherId < 400) {
+        // Drizzle
+        newPattern = PATTERN_RAIN;
+    } else if (weatherId >= 500 && weatherId < 600) {
+        // Rain
+        newPattern = PATTERN_RAIN;
+    } else if (weatherId >= 600 && weatherId < 700) {
+        // Snow
+        newPattern = PATTERN_TWINKLE; // White sparkles
+    } else if (weatherId >= 700 && weatherId < 800) {
+        // Atmosphere (Mist, Smoke, Haze, Dust, Fog, Sand, Dust, Ash, Squall, Tornado)
+        newPattern = PATTERN_FADE; // Eerie fade
+    } else if (weatherId == 800) {
+        // Clear
+        newPattern = PATTERN_FIRE; // Warm sun
+    } else if (weatherId > 800 && weatherId < 900) {
+        // Clouds
+        newPattern = PATTERN_FADE; // Gentle clouds
+    } else {
+        newPattern = PATTERN_RAINBOW; // Default
+    }
+
+    Serial.printf("Weather ID: %d -> Setting Pattern: %d\n", weatherId, newPattern);
+    neoPixel->setPattern(newPattern);
 }
 
 /**
@@ -162,77 +207,13 @@ void Protocol::systemMonitorTask()
         Serial.printf("Weather: %.1f°C, %s\n",
                       weatherService->getTemperature(),
                       weatherService->getDescription().c_str());
+        Serial.printf("Weather ID: %d\n", weatherService->getWeatherId());
         Serial.printf("Weather API calls: %lu\n", 
                       Weather::getApiCallCount());
     }
 
     Serial.printf("Uptime: %lu seconds\n", millis() / 1000);
     Serial.println("====================");
-}
-
-/**
- * @brief Clears all tasks, preparing for new task registration
- */
-void Protocol::initializeTasks()
-{
-    tasks.clear();
-}
-
-/**
- * @brief Starts the WiFi monitoring task and all registered application tasks
- *
- * Each task will run at its specified interval using the Ticker library
- */
-void Protocol::startAllTasks()
-{
-    if (wifiManager)
-    {
-        wifiManager->startTask();
-    }
-
-    for (auto &task : tasks)
-    {
-        task.ticker.attach_ms(task.interval_ms, task.callback);
-    }
-}
-
-/**
- * @brief Stops all running tasks and clears the task list
- *
- * This provides a clean shutdown of all background activities
- */
-void Protocol::stopAllTasks()
-{
-    if (wifiManager)
-    {
-        wifiManager->stopTask();
-    }
-
-    for (auto &task : tasks)
-    {
-        task.ticker.detach();
-    }
-    tasks.clear();
-}
-
-/**
- * @brief Creates and registers a new task in the system
- *
- * @param name Friendly identifier for the task
- * @param taskFunction Function to execute when task runs
- * @param interval_ms Time between task executions in milliseconds
- */
-void Protocol::createTask(const char *name, std::function<void(void)> taskFunction,
-                          uint32_t interval_ms)
-{
-    TaskConfig newTask = {
-        .name = name,
-        .ticker = Ticker(),
-        .callback = taskFunction,
-        .interval_ms = interval_ms};
-
-    tasks.push_back(newTask);
-    Serial.printf("Task '%s' created successfully\n", name);
 }
 
 /**

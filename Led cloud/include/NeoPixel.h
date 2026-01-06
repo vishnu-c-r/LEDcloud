@@ -29,6 +29,13 @@ public:
     uint32_t rgbToColor(int r, int g, int b);
     String getStatusJson();
 
+    // Map abstraction
+    // Returns the LED index for a given logical position (e.g., column x, row y)
+    // For a sphere, we might map Height (0-5) to indices.
+    // For now, we support a simple height-based mapping for Rain/Fire.
+    int getPixelIndexForHeight(int height, int column);
+    int getMaxHeight() const { return 10; } // Assuming 60 LEDs wrapped in ~10 layers or so?
+
 private:
     NeoPixel();
     static NeoPixel* instance;

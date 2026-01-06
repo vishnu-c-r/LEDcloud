@@ -291,6 +291,11 @@ void NeoPixel::updateTwinklePattern() {
 
 void NeoPixel::updateFirePattern() {
     // Fire effect simulation - red/orange/yellow flicker
+
+    // Simplified fire for Cloud (random flicker is often better for cloud than rising fire)
+    // But let's try to do a "rising" effect using the map if possible
+    // For now, standard random flicker across all pixels is quite good for a contained cloud.
+
     for (int i = 0; i < NUM_PIXELS; i++) {
         // Get a random number in the range controlled by heat (higher = more intense fire)
         int flicker = random(80, 150);
@@ -314,15 +319,45 @@ void NeoPixel::updateFirePattern() {
     strip.show();
 }
 
+// Helper to get index based on "Height" (0 is top, MAX is bottom)
+// This is a placeholder for the actual map.
+// Default assumption: Strip is wrapped Top-Down spirally.
+// So Index 0 is Top, Index 60 is Bottom.
+int NeoPixel::getPixelIndexForHeight(int height, int column) {
+    // Simple 1D mapping for now:
+    // If we have 10 "layers" and 60 pixels, each layer is 6 pixels.
+    // height 0 = indices 0-5
+    // height 9 = indices 54-59
+
+    int ledsPerLayer = NUM_PIXELS / getMaxHeight();
+    int baseIndex = height * ledsPerLayer;
+
+    // Distribute randomly or sequentially within the layer
+    // For specific column addressing we would need a real map.
+    // Here we just return a valid index in that range.
+    if (column < 0) return -1;
+
+    int idx = baseIndex + (column % ledsPerLayer);
+    if (idx >= NUM_PIXELS) return -1;
+
+    return idx;
+}
+
+
 void NeoPixel::updateRainPattern() {
     // Simulate rain falling - blue drops
-    // First, move all existing colors down by one pixel
+
+    // Shift all pixels "down"
+    // Assuming Index 0 is TOP and Index N is BOTTOM (Top-Down spiral)
+    // We want rain to move from Top (0) to Bottom (N)
+
+    // Move from Bottom to Top (reverse order loop) to avoid overwriting
     for (int i = NUM_PIXELS - 1; i > 0; i--) {
         pixelColors[i] = pixelColors[i - 1];
         strip.setPixelColor(i, pixelColors[i]);
     }
     
-    // New raindrops appear randomly at the top
+    // Create new drops at Top (Index 0)
     if (random(100) < 25) { // 25% chance of a new raindrop
         // Pick a blue color with some variation
         uint8_t b = random(180, 240);
@@ -333,13 +368,8 @@ void NeoPixel::updateRainPattern() {
     }
     strip.setPixelColor(0, pixelColors[0]);
     
-    // Add some random water puddle effects at the bottom
-    if (random(100) < 10) {
-        int puddleIdx = random(NUM_PIXELS - 5, NUM_PIXELS);
-        uint8_t puddleBlue = random(50, 100);
-        pixelColors[puddleIdx] = strip.Color(0, puddleBlue/2, puddleBlue);
-        strip.setPixelColor(puddleIdx, pixelColors[puddleIdx]);
-    }
+    // Add puddles at bottom?
+    // If wrapping is top-down, the last few pixels are the bottom.
     
     strip.show();
 }

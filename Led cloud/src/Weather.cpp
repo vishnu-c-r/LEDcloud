@@ -17,10 +17,10 @@ unsigned long Weather::apiCallCount = 0;
 Weather::Weather() 
     : temperature(0),
       humidity(0),  // Initialize humidity
+      weatherId(0), // Initialize weatherId
       weatherDescription("Unknown"), 
       weatherIcon(""),
-      lastUpdateTime(0),
-      shouldRun(false) {
+      lastUpdateTime(0) {
 }
 
 Weather* Weather::getInstance() {
@@ -190,23 +190,6 @@ String Weather::getSettingsJson() const {
     return jsonString;
 }
 
-void Weather::startTask() {
-    shouldRun = true;
-    
-    // Using a ticker to schedule periodic updates
-    weatherTicker.attach_ms(UPDATE_INTERVAL, []() {
-        Weather::getInstance()->fetchWeatherData();
-    });
-    
-    Serial.println("Weather update task started");
-}
-
-void Weather::stopTask() {
-    shouldRun = false;
-    weatherTicker.detach();
-    Serial.println("Weather update task stopped");
-}
-
 void Weather::updateNow() {
     // Force an immediate weather update regardless of the schedule
     fetchWeatherData();
@@ -292,6 +275,11 @@ void Weather::fetchWeatherData() {
                 Serial.print(humidity);
                 Serial.println("%");
             }
+
+            // Extract weather ID
+            if (doc["weather"][0]["id"].isNull() == false) {
+                weatherId = doc["weather"][0]["id"].as<int>();
+            }
             
             // Weather description
             if (doc["weather"][0]["description"].isNull() == false) {
@@ -311,6 +299,8 @@ void Weather::fetchWeatherData() {
             Serial.println("°C");
             Serial.print("Description: ");
             Serial.println(weatherDescription);
+            Serial.print("ID: ");
+            Serial.println(weatherId);
         }
     } else {
         Serial.print("Error code: ");
@@ -344,6 +334,7 @@ String Weather::toJson() const {
     
     doc["temperature"] = temperature;
     doc["humidity"] = humidity;  // Include humidity in the JSON response
+    doc["weatherId"] = weatherId;
     doc["description"] = weatherDescription;
     doc["icon"] = weatherIcon;
     doc["lastUpdate"] = getLastUpdateTime();

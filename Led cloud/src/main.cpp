@@ -14,8 +14,7 @@ void setup() {
     bool initSuccess = protocol->initializeSystem();
     
     if (initSuccess) {
-        // Set up and start all system tasks
-        protocol->setupTasks();
+        // We don't use setupTasks anymore, the update loop handles it.
         Serial.println("System initialization complete.");
     } else {
         Serial.println("System initialization failed!");
@@ -23,6 +22,11 @@ void setup() {
 }
 
 void loop() {
-    // Keep the loop minimal - all functionality is handled by tasks/callbacks
-    delay(10);
+    // Run the main system update loop
+    if (protocol) {
+        protocol->update();
+    }
+
+    // Allow for background WiFi/System tasks
+    delay(1);
 }
